@@ -4078,6 +4078,43 @@ ReloadBinder(A_ThisMenuItem := "", A_ThisMenuItemPos := "", MyMenu := "", *) {
     global
     Reload()
 }
+UpdateBinderDialog(current := false) {
+    global Main
+    accepted := false
+    dialog := Gui("+Owner" Main.Hwnd " -Caption +Border")
+    dialog.Title := "Обновление"
+    dialog.OnEvent("Close", (*) => dialog.Destroy())
+    dialog.OnEvent("Escape", (*) => dialog.Destroy())
+    dialog.BackColor := "12131A"
+    dialog.Add("Progress", "x0 y0 w500 h78 c1B1D27 Background1B1D27 Disabled", "100")
+    dialog.SetFont("s16 w700 cFFFFFF", "Segoe UI")
+    dialog.Add("Text", "x24 y17 w300 h30 +BackgroundTrans", "MAJESTIC")
+    dialog.SetFont("s9 w600 cEA3479", "Segoe UI")
+    dialog.Add("Text", "x26 y47 w300 h18 +BackgroundTrans", "ADMIN  /  BINDER")
+    dialog.SetFont("s15 w400 cAEB1BF", "Segoe UI")
+    dialog.Add("Text", "x459 y22 w27 h30 +0x200 +0x100 Center +BackgroundTrans", "×").OnEvent("Click", (*) => dialog.Destroy())
+    dialog.Add("Progress", "x0 y77 w500 h2 cEA3479 BackgroundEA3479 Disabled", "100")
+    dialog.Add("Progress", "x16 y96 w468 h111 c1B1D27 Background1B1D27 Disabled", "100")
+    dialog.SetFont("s14 w700 cFFFFFF", "Segoe UI")
+    dialog.Add("Text", "x32 y111 w436 h30 +BackgroundTrans", current ? "У вас последняя версия" : "Доступно обновление")
+    dialog.SetFont("s10 cE9EAF0", "Segoe UI")
+    dialog.Add("Text", "x32 y153 w436 h42 +BackgroundTrans", current ? "Новых обновлений пока нет." : "Установить новую версию и перезапустить биндер?")
+    dialog.SetFont("s10 w700 cFFFFFF", "Segoe UI")
+    if !current {
+        dialog.Add("Text", "x16 y221 w160 h36 +0x200 +0x100 Center Background292C38", "ПОЗЖЕ").OnEvent("Click", (*) => dialog.Destroy())
+    }
+    dialog.Add("Progress", "x324 y221 w160 h36 cEA3479 BackgroundEA3479 Disabled", "100")
+    dialog.Add("Text", "x324 y221 w160 h36 +0x200 +0x100 Center +BackgroundTrans", current ? "ПОНЯТНО" : "ОБНОВИТЬ").OnEvent("Click", (*) => (accepted := true, dialog.Destroy()))
+    dialog.Add("Button", "Hidden Default", current ? "Понятно" : "Обновить").OnEvent("Click", (*) => (accepted := true, dialog.Destroy()))
+    Main.Opt("+Disabled")
+    try {
+        dialog.Show("w500 h273")
+        WinWaitClose("ahk_id " dialog.Hwnd)
+    } finally {
+        Main.Opt("-Disabled")
+    }
+    return accepted
+}
 UpdateBinder(*) {
     if A_IsCompiled {
         MsgBox("Обновление доступно только для binder.ahk.", "Обновление", 16)
@@ -4091,10 +4128,10 @@ UpdateBinder(*) {
         if !InStr(downloaded, "#Requires AutoHotkey v2.0", true, 1, 1)
             throw Error("В релизе нет корректного binder.ahk.")
         if (downloaded = FileRead(A_ScriptFullPath, "UTF-8")) {
-            MsgBox("У вас уже последняя версия.", "Обновление")
+            UpdateBinderDialog(true)
             return
         }
-        if (MsgBox("Найдено обновление. Установить и перезапустить биндер?", "Обновление", "YesNo") != "Yes")
+        if !UpdateBinderDialog()
             return
         FileCopy(A_ScriptFullPath, backupPath, true)
         FileMove(tempPath, A_ScriptFullPath, true)
