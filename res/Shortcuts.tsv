@@ -4268,13 +4268,8 @@ R	yfrfpfk
 H	yfrfpfk	male	send	Наказал.
 H	yfrfpfk	female	send	Наказала.
 
-R	.ку4
-V	answers	Discord	.ку4	Тестовое сообщение	
-H	.ку4	all	text	Тестовое сообщение
-H	/re4	all	text	Тестовое сообщение
-
 R	.ку
 V	answers	Приветствие	.ку	Здравствуйте!	
-H	.ку	all	text	Здравствуйте!
-H	/re	all	text	Здравствуйте!
+H	.ку	all	send	Здравствуйте! {Enter}
+H	/re	all	send	Здравствуйте! {Enter}
 

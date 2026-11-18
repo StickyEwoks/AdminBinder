@@ -490,7 +490,7 @@ Gui, Main: Font, s9 w700 cEA3479, Segoe UI
 Gui, Main: Add, Text, x641 y133 w62 h23 vMainUsefulSearchLabel +BackgroundTrans Hidden, ПОИСК
 Gui, Main: Font, s10 w400 cE9EAF0, Segoe UI
 Gui, Main: Add, Edit, x710 y129 w245 h28 vMainUsefulSearch gMainUsefulSearchChanged hwndMainUsefulSearchHwnd -Border Background292C38 Hidden
-DllCall("SendMessage", "Ptr", MainUsefulSearchHwnd, "UInt", 0x1501, "Ptr", 1, "WStr", "Поиск по всем главам")
+DllCall("SendMessage", "Ptr", MainUsefulSearchHwnd, "UInt", 0x1501, "Ptr", 1, "WStr", "Поиск по разделам")
 Gui, Main: Font, s15 w400 cEA3479, Segoe UI
 Gui, Main: Add, Text, x958 y129 w25 h28 vMainUsefulSearchClear gMainUsefulSearchClear +0x200 +0x100 Center Background292C38 Hidden, ×
 Gui, Main: Add, Progress, x710 y158 w273 h2 cEA3479 BackgroundEA3479 Disabled vMainUsefulSearchAccent Hidden, 100
@@ -498,7 +498,7 @@ Gui, Main: Font, s9 w700 cEA3479, Segoe UI
 Gui, Main: Add, Text, x641 y133 w62 h23 vMainAnswersSearchLabel +BackgroundTrans Hidden, ПОИСК
 Gui, Main: Font, s10 w400 cE9EAF0, Segoe UI
 Gui, Main: Add, Edit, x710 y129 w245 h28 vMainAnswersSearch gMainAnswersSearchChanged hwndMainAnswersSearchHwnd -Border Background292C38 Hidden
-DllCall("SendMessage", "Ptr", MainAnswersSearchHwnd, "UInt", 0x1501, "Ptr", 1, "WStr", "Поиск по всем главам")
+DllCall("SendMessage", "Ptr", MainAnswersSearchHwnd, "UInt", 0x1501, "Ptr", 1, "WStr", "Поиск по разделам")
 Gui, Main: Font, s15 w400 cEA3479, Segoe UI
 Gui, Main: Add, Text, x958 y129 w25 h28 vMainAnswersSearchClear gMainAnswersSearchClear +0x200 +0x100 Center Background292C38 Hidden, ×
 Gui, Main: Add, Progress, x710 y158 w273 h2 cEA3479 BackgroundEA3479 Disabled vMainAnswersSearchAccent Hidden, 100
@@ -508,7 +508,7 @@ if (!richEditModule) {
     ExitApp
 }
 Gui, Main: Font, s11 w400 cE9EAF0, Segoe UI
-Gui, Main: Add, Custom, ClassRICHEDIT50W x230 y193 w758 h399 vMainSectionBody hwndMainSectionBodyHwnd +0x4 +0x40 +0x800 -Border
+Gui, Main: Add, Custom, ClassRICHEDIT50W x230 y193 w690 h399 vMainSectionBody hwndMainSectionBodyHwnd +0x4 +0x40 +0x800 -Border
 DllCall("SendMessage", "Ptr", MainSectionBodyHwnd, "UInt", 0x443, "Ptr", 0, "Ptr", 0x271D1B)
 VarSetCapacity(sectionTextFormat, 116, 0)
 NumPut(116, sectionTextFormat, 0, "UInt")
@@ -518,7 +518,15 @@ DllCall("SendMessage", "Ptr", MainSectionBodyHwnd, "UInt", 0x444, "Ptr", 0, "Ptr
 DllCall("SendMessage", "Ptr", MainSectionBodyHwnd, "UInt", 0x435, "Ptr", 0, "Ptr", 1000000)
 DllCall("SendMessage", "Ptr", MainSectionBodyHwnd, "UInt", 0xD3, "Ptr", 3, "Ptr", 12 | (12 << 16))
 Gui, Main: Add, Text, x994 y193 w12 h399 +0x100 Background292C38 gMainSectionScrollClick vMainSectionScrollTrack hwndMainSectionScrollTrackHwnd, % Chr(160)
-Gui, Main: Add, Progress, x996 y195 w8 h32 cEA3479 BackgroundEA3479 Disabled vMainSectionScrollThumb Hidden, 100
+Gui, Main: Add, Progress, x996 y195 w8 h32 cEA3479 BackgroundEA3479 Disabled vMainSectionScrollThumb hwndMainSectionScrollThumbHwnd Hidden, 100
+mainAnswerActions := []
+mainAnswerButtonY := []
+Loop, 24 {
+    Gui, Main: Font, s11 cEA3479, Segoe UI Symbol
+    Gui, Main: Add, Text, % "x929 y193 w25 h22 Center +0x200 +0x100 Background292C38 Hidden vMainAnswerEdit" A_Index " gMainAnswerEdit", ✎
+    Gui, Main: Font, s11 cEA3479, Segoe UI Emoji
+    Gui, Main: Add, Text, % "x958 y193 w25 h22 Center +0x200 +0x100 Background292C38 Hidden vMainAnswerDelete" A_Index " gMainAnswerDelete", 🗑
+}
 Gui, Main: Font, s9 w700 cEA3479, Segoe UI
 Gui, Main: Add, Text, x230 y129 w125 h28 +0x200 +0x100 Center Background292C38 vMainChaptersBack gMainChaptersBack Hidden, ← К ГЛАВАМ
 answerChapters := ["Вики", "Информация", "Адм Ответы", "asms", "Приветствие", "Discord"]
@@ -768,6 +776,7 @@ GreetingHotkeyDisplayText(keyName) {
 MainShowBinds:
 SetTimer, MainRefreshSectionScroll, Off
 GuiControl, Main:Choose, MainTabs, 1
+MainUpdateAnswerActions()
 GuiControl, Main:Hide, MainSectionAccent
 GuiControl, Main:Show, MainTabAccent
 GuiControl, Main:Move, MainTabAccent, x610 y57
@@ -779,6 +788,7 @@ return
 MainShowSettings:
 SetTimer, MainRefreshSectionScroll, Off
 GuiControl, Main:Choose, MainTabs, 2
+MainUpdateAnswerActions()
 GuiControl, Main:Hide, MainSectionAccent
 GuiControl, Main:Show, MainTabAccent
 GuiControl, Main:Move, MainTabAccent, x790 y57
@@ -796,7 +806,37 @@ else if (selectedTab = "Бинды")
 return
 
 MainRefreshSectionScroll:
+if (shortcutEditorHwnd && DllCall("GetForegroundWindow", "Ptr") = shortcutEditorHwnd)
+    return
 MainUpdateSectionScroll()
+return
+
+MainHighlightDeferred:
+MainHighlightVisibleMatches()
+return
+
+MainAnswerEdit:
+actionIndex := RegExReplace(A_GuiControl, "\D")
+action := mainAnswerActions[actionIndex]
+if (IsObject(action)) {
+    shortcutOpenRecord := action.index
+    shortcutOpenSection := action.section
+    shortcutOpenChapter := action.chapter
+    Gosub, ShortcutEditorOpen
+}
+return
+
+MainAnswerDelete:
+actionIndex := RegExReplace(A_GuiControl, "\D")
+action := mainAnswerActions[actionIndex]
+if (IsObject(action)) {
+    deleted := ShortcutDeleteRecord(action.index)
+    if (deleted = 1) {
+        MainRenderSearchSection(mainCurrentSection, mainCurrentSection = "answers" ? "MainAnswersSearch" : "MainUsefulSearch")
+        GuiControl, Main:, MainFooterHint, % "Удалено: " shortcutDeletedAlias
+    } else if (deleted = -1)
+        MsgBox, 16, Сокращения, Не удалось обновить файл Shortcuts.tsv.
+}
 return
 
 MainSectionScrollClick:
@@ -839,6 +879,7 @@ MainSectionControlColor(wParam, lParam, msg, hwnd) {
 
 MainSectionScrollMouseDown(wParam, lParam, msg, hwnd) {
     global MainSectionScrollTrackHwnd, mainSectionDragging
+    global shortcutScrollTracks, shortcutScrollDragging
     global GreetingHotkeyHwnd, greetingCaptureOpen
     global ID, counterMoveActive
     if (counterMoveActive && (hwnd = ID || DllCall("GetAncestor", "Ptr", hwnd, "UInt", 2, "Ptr") = ID)) {
@@ -848,6 +889,12 @@ MainSectionScrollMouseDown(wParam, lParam, msg, hwnd) {
     }
     if (greetingCaptureOpen && hwnd != GreetingHotkeyHwnd)
         GreetingFinishHotkeyCapture()
+    if (IsObject(shortcutScrollTracks) && shortcutScrollTracks.HasKey(hwnd)) {
+        shortcutScrollDragging := shortcutScrollTracks[hwnd]
+        DllCall("SetCapture", "Ptr", hwnd)
+        ShortcutScrollToMouse(shortcutScrollDragging)
+        return 0
+    }
     if (hwnd != MainSectionScrollTrackHwnd)
         return
     mainSectionDragging := true
@@ -857,7 +904,11 @@ MainSectionScrollMouseDown(wParam, lParam, msg, hwnd) {
 }
 
 MainSectionScrollMouseMove(wParam, lParam, msg, hwnd) {
-    global mainSectionDragging
+    global mainSectionDragging, shortcutScrollDragging
+    if (shortcutScrollDragging) {
+        ShortcutScrollToMouse(shortcutScrollDragging)
+        return 0
+    }
     if (!mainSectionDragging)
         return
     MainScrollSectionToMouse()
@@ -865,7 +916,13 @@ MainSectionScrollMouseMove(wParam, lParam, msg, hwnd) {
 }
 
 MainSectionScrollMouseUp(wParam, lParam, msg, hwnd) {
-    global mainSectionDragging
+    global mainSectionDragging, shortcutScrollDragging
+    if (shortcutScrollDragging) {
+        ShortcutScrollToMouse(shortcutScrollDragging)
+        shortcutScrollDragging := 0
+        DllCall("ReleaseCapture")
+        return 0
+    }
     if (!mainSectionDragging)
         return
     MainScrollSectionToMouse()
@@ -875,8 +932,19 @@ MainSectionScrollMouseUp(wParam, lParam, msg, hwnd) {
 }
 
 MainSectionWheel(wParam, lParam, msg, hwnd) {
-    global mainGuiHwnd, MainSectionBodyHwnd
+    global mainGuiHwnd, MainSectionBodyHwnd, shortcutListHwnd, shortcutEditorHwnd, shortcutScrollTracks
+    if (hwnd = shortcutListHwnd)
+        return
     WinGet, activeWindow, ID, A
+    if (activeWindow = shortcutEditorHwnd && IsObject(shortcutScrollTracks) && shortcutScrollTracks.HasKey(hwnd)) {
+        index := shortcutScrollTracks[hwnd]
+        info := ShortcutScrollInfo(index)
+        delta := (wParam >> 16) & 0xFFFF
+        if (delta > 32767)
+            delta -= 65536
+        ShortcutScrollTo(index, info.first - Round(delta / 120) * 3)
+        return 0
+    }
     if (activeWindow != mainGuiHwnd)
         return
     GuiControlGet, selectedTab, Main:, MainTabs
@@ -905,17 +973,79 @@ MainSectionScrollInfo() {
     return {first: Min(first, maxFirst), maxFirst: maxFirst, thumbHeight: thumbHeight}
 }
 
-MainUpdateSectionScroll() {
+MainUpdateSectionScroll(redraw := true) {
+    global MainSectionScrollThumbHwnd
+    static lastY := "", lastHeight := "", lastFirst := ""
     info := MainSectionScrollInfo()
+    scrolled := info.first != lastFirst
+    lastFirst := info.first
+    if (!redraw)
+        MainHighlightVisibleMatches(info.first, false)
+    else if (scrolled)
+        SetTimer, MainHighlightDeferred, -180
     if (info.maxFirst <= 0) {
-        GuiControl, Main:Hide, MainSectionScrollThumb
-        MainHighlightVisibleMatches(info.first)
+        if DllCall("IsWindowVisible", "Ptr", MainSectionScrollThumbHwnd)
+            GuiControl, Main:Hide, MainSectionScrollThumb
+        if (scrolled || !redraw)
+            MainUpdateAnswerActions()
         return
     }
     thumbY := 193 + Round(info.first / info.maxFirst * (399 - info.thumbHeight))
-    GuiControl, Main:MoveDraw, MainSectionScrollThumb, % "x996 y" thumbY " w8 h" info.thumbHeight
-    GuiControl, Main:Show, MainSectionScrollThumb
-    MainHighlightVisibleMatches(info.first)
+    if (thumbY != lastY || info.thumbHeight != lastHeight) {
+        GuiControl, Main:Move, MainSectionScrollThumb, % "x996 y" thumbY " w8 h" info.thumbHeight
+        lastY := thumbY
+        lastHeight := info.thumbHeight
+    }
+    if !DllCall("IsWindowVisible", "Ptr", MainSectionScrollThumbHwnd)
+        GuiControl, Main:Show, MainSectionScrollThumb
+    if (scrolled || !redraw)
+        MainUpdateAnswerActions()
+}
+
+MainUpdateAnswerActions() {
+    global MainSectionBodyHwnd, mainAnswerEntries, mainAnswerActions
+    global mainAnswerButtonY, mainCurrentSection, mainChaptersVisible, mainActiveSearchQuery
+    GuiControlGet, selectedTab, Main:, MainTabs
+    visible := (selectedTab = "Справочник" || selectedTab = 3) && !mainChaptersVisible
+        && (mainCurrentSection = "answers" || mainCurrentSection = "useful" || mainActiveSearchQuery != "")
+    slot := 0
+    if (visible && IsObject(mainAnswerEntries)) {
+        for _, entry in mainAnswerEntries {
+            if (entry.position < 0 || !entry.index)
+                continue
+            point := DllCall("SendMessage", "Ptr", MainSectionBodyHwnd, "UInt", 0xD6, "Ptr", entry.position, "Ptr", 0, "UInt")
+            y := (point >> 16) & 0xFFFF
+            if (y > 32767)
+                y -= 65536
+            if (y < 0)
+                continue
+            if (y > 377)
+                break
+            slot++
+            if (slot > 24)
+                break
+            mainAnswerActions[slot] := entry
+            oldY := mainAnswerButtonY[slot]
+            if (oldY = "" || oldY != y) {
+                for _, action in ["Edit", "Delete"] {
+                    control := "MainAnswer" action slot
+                    GuiControl, Main:Move, %control%, % "y" (193 + y)
+                    if (oldY = "")
+                        GuiControl, Main:Show, %control%
+                }
+                mainAnswerButtonY[slot] := y
+            }
+        }
+    }
+    Loop, % 24 - slot {
+        index := slot + A_Index
+        if (!mainAnswerActions[index] && mainAnswerButtonY[index] = "")
+            continue
+        mainAnswerActions[index] := 0
+        mainAnswerButtonY[index] := ""
+        GuiControl, Main:Hide, % "MainAnswerEdit" index
+        GuiControl, Main:Hide, % "MainAnswerDelete" index
+    }
 }
 
 MainScrollSectionToMouse() {
@@ -945,10 +1075,11 @@ return
 
 MainAnswersSearchChanged:
 if (mainCurrentSection = "answers")
-    MainSearchChanged("answers", "MainAnswersSearch")
+    SetTimer, MainSearchApply, -180
 return
 
 MainAnswersSearchClear:
+SetTimer, MainSearchApply, Off
 GuiControl, Main:, MainAnswersSearch,
 GuiControl, Main:Focus, MainAnswersSearch
 if (mainCurrentSection = "answers")
@@ -974,18 +1105,27 @@ return
 
 MainUsefulSearchChanged:
 if (mainCurrentSection = "useful" || mainCurrentSection = "punishments")
-    MainSearchChanged(mainCurrentSection, "MainUsefulSearch")
+    SetTimer, MainSearchApply, -180
 return
 
 MainUsefulSearchClear:
+SetTimer, MainSearchApply, Off
 GuiControl, Main:, MainUsefulSearch,
 GuiControl, Main:Focus, MainUsefulSearch
 if (mainCurrentSection = "useful" || mainCurrentSection = "punishments")
     MainSearchChanged(mainCurrentSection, "MainUsefulSearch")
 return
 
+MainSearchApply:
+if (mainCurrentSection = "answers")
+    MainSearchChanged("answers", "MainAnswersSearch")
+else if (mainCurrentSection = "useful" || mainCurrentSection = "punishments")
+    MainSearchChanged(mainCurrentSection, "MainUsefulSearch")
+return
+
 MainOpenSection(sectionFile, sectionTitle, sectionIndex) {
     global AdminGender, mainCurrentSection, mainSelectedChapter
+    SetTimer, MainSearchApply, Off
     SetTimer, MainRefreshSectionScroll, Off
     mainCurrentSection := sectionFile
     chapterSection := sectionFile = "answers" || sectionFile = "useful" || sectionFile = "punishments"
@@ -1018,6 +1158,7 @@ MainOpenSection(sectionFile, sectionTitle, sectionIndex) {
             , "MainAnswersSearchLabel", "MainAnswersSearch", "MainAnswersSearchClear", "MainAnswersSearchAccent"]
             GuiControl, Main:Hide, %searchControl%
         MainHideChapters()
+        MainUpdateAnswerActions()
     }
     GuiControl, Main:Choose, MainTabs, 3
     GuiControl, Main:Hide, MainTabAccent
@@ -1035,13 +1176,16 @@ MainOpenSection(sectionFile, sectionTitle, sectionIndex) {
 
 MainShowChapters() {
     global answerChapters, usefulChapters, punishmentChapters, mainCurrentSection, mainSelectedChapter, mainActiveSearchQuery
-    global mainChaptersVisible, mainShownChapterCount, mainShownChapterSection
+    global mainChaptersVisible, mainShownChapterCount, mainShownChapterSection, mainAnswerEntries
+    SetTimer, MainSearchApply, Off
     mainSelectedChapter := ""
+    mainAnswerEntries := []
+    MainUpdateAnswerActions()
     mainActiveSearchQuery := ""
     chapterNames := mainCurrentSection = "answers" ? answerChapters : mainCurrentSection = "punishments" ? punishmentChapters : usefulChapters
-    GuiControl, Main:Move, MainSectionTitle, x230 y126 w776 h31
+    GuiControl, Main:MoveDraw, MainSectionTitle, x230 y126 w776 h31
     GuiControl, Main:, MainSectionTitle, % mainCurrentSection = "answers" ? "Ответы" : mainCurrentSection = "punishments" ? "Наказания" : "Полезное"
-    GuiControl, Main:, MainSectionSubtitle, Выберите главу или найдите запись во всём разделе
+    GuiControl, Main:, MainSectionSubtitle, Выберите главу или найдите запись в ответах, наказаниях и полезном
     GuiControl, Main:Hide, MainChaptersBack
     if (!mainChaptersVisible) {
         GuiControl, Main:Hide, MainSectionBody
@@ -1071,7 +1215,9 @@ MainShowChapters() {
     otherSearchControl := mainCurrentSection = "answers" ? "MainUsefulSearch" : "MainAnswersSearch"
     for _, controlName in [otherSearchControl "Label", otherSearchControl, otherSearchControl "Clear", otherSearchControl "Accent"]
         GuiControl, Main:Hide, %controlName%
-    GuiControl, Main:, %searchControl%,
+    GuiControlGet, currentSearch, Main:, %searchControl%
+    if (currentSearch != "")
+        GuiControl, Main:, %searchControl%,
     for _, controlName in [searchControl "Label", searchControl, searchControl "Clear", searchControl "Accent"]
         GuiControl, Main:Show, %controlName%
     SetTimer, MainRefreshSectionScroll, Off
@@ -1089,18 +1235,21 @@ MainHideChapters() {
     GuiControl, Main:Hide, MainChaptersBack
     GuiControl, Main:Show, MainSectionBody
     GuiControl, Main:Show, MainSectionScrollTrack
-    GuiControl, Main:Move, MainSectionTitle, x230 y126 w776 h31
+    GuiControl, Main:MoveDraw, MainSectionTitle, x230 y126 w776 h31
 }
 
 MainShowChapter(chapterName) {
     global mainCurrentSection, mainSelectedChapter
+    SetTimer, MainSearchApply, Off
     mainSelectedChapter := chapterName
     MainHideChapters()
     GuiControl, Main:Show, MainChaptersBack
-    GuiControl, Main:Move, MainSectionTitle, x370 y126 w250 h31
+    GuiControl, Main:MoveDraw, MainSectionTitle, x370 y126 w250 h31
     GuiControl, Main:, MainSectionTitle, %chapterName%
     searchControl := mainCurrentSection = "answers" ? "MainAnswersSearch" : "MainUsefulSearch"
-    GuiControl, Main:, %searchControl%,
+    GuiControlGet, currentSearch, Main:, %searchControl%
+    if (currentSearch != "")
+        GuiControl, Main:, %searchControl%,
     for _, controlName in [searchControl "Label", searchControl, searchControl "Clear", searchControl "Accent"]
         GuiControl, Main:Show, %controlName%
     MainRenderSearchSection(mainCurrentSection, searchControl)
@@ -1108,7 +1257,7 @@ MainShowChapter(chapterName) {
 }
 
 MainSearchChanged(sectionName, searchControl) {
-    global mainSelectedChapter
+    global mainSelectedChapter, mainActiveSearchQuery
     GuiControlGet, query, Main:, %searchControl%
     if (Trim(query) = "") {
         if (mainSelectedChapter = "")
@@ -1117,11 +1266,14 @@ MainSearchChanged(sectionName, searchControl) {
             MainShowChapter(mainSelectedChapter)
         return
     }
-    MainHideChapters()
-    GuiControl, Main:Show, MainChaptersBack
-    GuiControl, Main:Move, MainSectionTitle, x370 y126 w250 h31
-    GuiControl, Main:, MainSectionTitle, Результаты поиска
+    if (mainActiveSearchQuery = "") {
+        MainHideChapters()
+        GuiControl, Main:Show, MainChaptersBack
+        GuiControl, Main:MoveDraw, MainSectionTitle, x370 y126 w250 h31
+        GuiControl, Main:, MainSectionTitle, Результаты поиска
+    }
     MainRenderSearchSection(sectionName, searchControl)
+    GuiControl, Main:Focus, %searchControl%
     SetTimer, MainRefreshSectionScroll, 100
 }
 
@@ -1135,31 +1287,116 @@ MainRenderAnswersSection() {
 
 MainRenderSearchSection(sectionName, searchControl) {
     global MainSectionBodyHwnd, AdminGender, mainActiveSearchQuery, mainLastHighlightedLine, mainSelectedChapter
+    global mainAnswerEntries, shortcutRecords
     GuiControlGet, query, Main:, %searchControl%
-    source := BinderGetSectionContent(sectionName)
-    if (Trim(query) = "" && mainSelectedChapter != "" && (sectionName = "answers" || sectionName = "useful" || sectionName = "punishments"))
-        source := MainChapterContent(source, mainSelectedChapter)
-    filtered := MainFilterReferenceContent(source, query)
-    if (filtered = "") {
-        display := "По запросу «" Trim(query) "» ничего не найдено."
+    if (Trim(query) = "") {
+        source := BinderGetSectionContent(sectionName)
+        if (mainSelectedChapter != "")
+            source := MainChapterContent(source, mainSelectedChapter)
+        filtered := MainFilterReferenceContent(source, query)
+        display := MainFormatReferenceText(sectionName, filtered, entryCount)
+    } else if (Trim(query) = "." || Trim(query) = "/") {
+        display := "Введите сокращение целиком."
         entryCount := 0
     } else {
-        display := MainFormatReferenceText(sectionName, filtered, entryCount)
+        display := MainSearchAllSections(query, entryCount)
     }
-    if (sectionName = "answers")
-        subtitle := (Trim(query) = "")
-            ? entryCount . " готовых ответов  ·  Выбранная форма: " (AdminGender = "female" ? "женская" : "мужская")
-            : "Найдено: " . entryCount . "  ·  Форма: " (AdminGender = "female" ? "женская" : "мужская")
+    if (display = "") {
+        display := "По запросу «" Trim(query) "» ничего не найдено."
+        entryCount := 0
+    }
+    GuiControlGet, latestQuery, Main:, %searchControl%
+    if !(latestQuery == query) {
+        SetTimer, MainSearchApply, -50
+        return
+    }
+    mainAnswerEntries := MainCollectActionEntries(display, sectionName, Trim(query))
+    if (Trim(query) != "")
+        subtitle := "Найдено: " . entryCount . "  ·  Ответы, наказания и полезное"
+    else if (sectionName = "answers")
+        subtitle := entryCount . " готовых ответов  ·  Выбранная форма: " (AdminGender = "female" ? "женская" : "мужская")
     else
-        subtitle := (Trim(query) = "")
-            ? entryCount . " сокращений  ·  Быстрый доступ к командам и подсказкам"
-            : "Найдено: " . entryCount . "  ·  Поиск по названию и описанию"
+        subtitle := entryCount . " сокращений  ·  Быстрый доступ к командам и подсказкам"
     GuiControl, Main:, MainSectionSubtitle, %subtitle%
+    DllCall("SendMessage", "Ptr", MainSectionBodyHwnd, "UInt", 0xB, "Ptr", 0, "Ptr", 0)
     GuiControl, Main:, MainSectionBody, %display%
+    nextPosition := 0
+    for _, entry in mainAnswerEntries {
+        heading := entry.heading
+        VarSetCapacity(found, 24, 0)
+        NumPut(nextPosition, found, 0, "Int")
+        NumPut(-1, found, 4, "Int")
+        NumPut(&heading, found, 8, "Ptr")
+        entry.position := DllCall("SendMessage", "Ptr", MainSectionBodyHwnd, "UInt", 0x47C, "Ptr", 1, "Ptr", &found, "Int")
+        if (entry.position < 0)
+            break
+        nextPosition := NumGet(found, 20, "Int")
+    }
     DllCall("SendMessage", "Ptr", MainSectionBodyHwnd, "UInt", 0x115, "Ptr", 6, "Ptr", 0)
     mainActiveSearchQuery := Trim(query)
     mainLastHighlightedLine := -1
-    MainUpdateSectionScroll()
+    MainUpdateSectionScroll(false)
+    DllCall("SendMessage", "Ptr", MainSectionBodyHwnd, "UInt", 0xB, "Ptr", 1, "Ptr", 0)
+    DllCall("InvalidateRect", "Ptr", MainSectionBodyHwnd, "Ptr", 0, "Int", 1)
+    GuiControlGet, latestQuery, Main:, %searchControl%
+    if !(latestQuery == query)
+        SetTimer, MainSearchApply, -50
+}
+
+MainCollectActionEntries(display, sectionName, query) {
+    global shortcutRecords, mainSelectedChapter
+    entries := []
+    recordIndexes := {}
+    for index, record in shortcutRecords
+        recordIndexes[record.alias] := index
+    resultSection := sectionName
+    chapter := mainSelectedChapter
+    for _, rawLine in StrSplit(display, "`n") {
+        line := Trim(rawLine, "`r")
+        if (query != "") {
+            if (line = "ОТВЕТЫ")
+                resultSection := "answers", chapter := ""
+            else if (line = "НАКАЗАНИЯ")
+                resultSection := "punishments", chapter := ""
+            else if (line = "ПОЛЕЗНОЕ")
+                resultSection := "useful", chapter := ""
+            for _, name in ShortcutSectionChapters(resultSection) {
+                StringUpper, title, name
+                if (line = title) {
+                    chapter := name
+                    break
+                }
+            }
+        }
+        if !RegExMatch(line, "^◆  (.+)$", match)
+            continue
+        recordIndex := 0
+        index := recordIndexes[ShortcutKey(match1)]
+        if (index) {
+            for _, ref in shortcutRecords[index].refs {
+                if (ref.section = resultSection && ref.chapter = chapter && ref.alias = match1) {
+                    recordIndex := index
+                    break
+                }
+            }
+        }
+        entries.Push({heading: "◆  " match1, index: recordIndex, section: resultSection, chapter: chapter, position: -1})
+    }
+    return entries
+}
+
+MainSearchAllSections(query, ByRef entryCount) {
+    entryCount := 0
+    display := ""
+    for _, section in [["answers", "ОТВЕТЫ"], ["punishments", "НАКАЗАНИЯ"], ["useful", "ПОЛЕЗНОЕ"]] {
+        filtered := MainFilterReferenceContent(BinderGetSectionContent(section[1]), query)
+        if (filtered = "")
+            continue
+        sectionText := MainFormatReferenceText(section[1], filtered, sectionCount)
+        entryCount += sectionCount
+        display .= section[2] "`r`n══════════════════════════════════`r`n`r`n" sectionText "`r`n"
+    }
+    return display
 }
 
 MainChapterContent(source, chapterName) {
@@ -1189,6 +1426,8 @@ MainFilterReferenceContent(source, query) {
         return source
     StringLower, queryLower, query
     terms := StrSplit(RegExReplace(queryLower, "\s+", " "), " ")
+    prefixAlias := StrLen(queryLower) > 1 && (SubStr(queryLower, 1, 1) = "." || SubStr(queryLower, 1, 1) = "/")
+        && !InStr(queryLower, " ")
     normalized := StrReplace(StrReplace(source, "`r`n", "`n"), "`r", "`n")
     result := ""
     groupName := ""
@@ -1199,14 +1438,19 @@ MainFilterReferenceContent(source, query) {
             groupName := group1
             StringLower, groupNameLower, groupName
             groupVisible := false
-        } else if RegExMatch(line, "^(.+?)\s+-\s+(.*)$") {
-            StringLower, lineLower, line
-            combined := lineLower . " " . groupNameLower
-            matches := true
-            for _, term in terms {
-                if (term != "" && !InStr(combined, term)) {
-                    matches := false
-                    break
+        } else if RegExMatch(line, "^(.+?)\s+-\s+(.*)$", item) {
+            if (prefixAlias) {
+                StringLower, aliasLower, item1
+                matches := SubStr(aliasLower, 1, StrLen(queryLower)) = queryLower
+            } else {
+                StringLower, lineLower, line
+                combined := lineLower . " " . groupNameLower
+                matches := true
+                for _, term in terms {
+                    if (term != "" && !InStr(combined, term)) {
+                        matches := false
+                        break
+                    }
                 }
             }
             if (!matches)
@@ -1221,7 +1465,7 @@ MainFilterReferenceContent(source, query) {
     return result
 }
 
-MainHighlightVisibleMatches(firstVisible := -1) {
+MainHighlightVisibleMatches(firstVisible := -1, redraw := true) {
     global MainSectionBodyHwnd, mainCurrentSection, mainActiveSearchQuery, mainLastHighlightedLine
     if (mainCurrentSection != "answers" && mainCurrentSection != "useful" && mainCurrentSection != "punishments")
         return
@@ -1244,7 +1488,8 @@ MainHighlightVisibleMatches(firstVisible := -1) {
     NumPut(0x44000000, format, 4, "UInt") ; Цвет текста и фон совпадения.
     NumPut(0xFFFFFF, format, 20, "UInt")
     NumPut(0x7934EA, format, 96, "UInt")
-    DllCall("SendMessage", "Ptr", MainSectionBodyHwnd, "UInt", 0xB, "Ptr", 0, "Ptr", 0)
+    if (redraw)
+        DllCall("SendMessage", "Ptr", MainSectionBodyHwnd, "UInt", 0xB, "Ptr", 0, "Ptr", 0)
     for _, term in StrSplit(query, " ") {
         if (term = "")
             continue
@@ -1269,8 +1514,10 @@ MainHighlightVisibleMatches(firstVisible := -1) {
     currentFirst := DllCall("SendMessage", "Ptr", MainSectionBodyHwnd, "UInt", 0xCE, "Ptr", 0, "Ptr", 0, "Int")
     if (currentFirst != firstVisible)
         DllCall("SendMessage", "Ptr", MainSectionBodyHwnd, "UInt", 0xB6, "Ptr", 0, "Int", firstVisible - currentFirst)
-    DllCall("SendMessage", "Ptr", MainSectionBodyHwnd, "UInt", 0xB, "Ptr", 1, "Ptr", 0)
-    DllCall("InvalidateRect", "Ptr", MainSectionBodyHwnd, "Ptr", 0, "Int", 1)
+    if (redraw) {
+        DllCall("SendMessage", "Ptr", MainSectionBodyHwnd, "UInt", 0xB, "Ptr", 1, "Ptr", 0)
+        DllCall("InvalidateRect", "Ptr", MainSectionBodyHwnd, "Ptr", 0, "Int", 1)
+    }
 }
 
 MainFormatReferenceText(sectionFile, sectionText, ByRef entryCount) {
@@ -2228,8 +2475,12 @@ return
 #If
 ; Редактор хранит пользовательские записи и список отключённых сокращений отдельно от поставляемых справочников.
 ShortcutEditorOpen:
+SetTimer, ShortcutEditorDeferredSelection, Off
 Gui, Shortcuts: Destroy
 shortcutLastAliasInput := ""
+shortcutPaintRow := 0
+shortcutPaintRect := 0
+shortcutListVisibleRows := 0
 shortcutPreviousAction := 0
 shortcutOtherTextManual := false
 Gui, Shortcuts: +OwnerMain -Caption +Border +HwndshortcutEditorHwnd
@@ -2254,10 +2505,9 @@ Gui, Shortcuts: Add, Text, x250 y112 w230 +BackgroundTrans, РАЗДЕЛ
 Gui, Shortcuts: Add, Text, x500 y112 w450 +BackgroundTrans, ГЛАВА
 Gui, Shortcuts: Font, s10 w400 cE9EAF0, Segoe UI
 OnMessage(0x2B, "ShortcutDrawComboItem")
-OnMessage(0x4E, "ShortcutDrawSelectedRow")
 ; Owner draw с CBS_HASSTRINGS сохраняет стандартный выбор и навигацию клавиатурой.
 Gui, Shortcuts: Add, DropDownList, x30 y136 w200 r12 +0x210 Choose1 AltSubmit vShortcutAction hwndshortcutActionHwnd gShortcutEditorRefresh, Добавить|Удалить|Изменить
-Gui, Shortcuts: Add, DropDownList, x250 y136 w230 r12 +0x210 Choose1 AltSubmit vShortcutSection hwndshortcutSectionHwnd gShortcutEditorSection, Ответы|Полезное
+Gui, Shortcuts: Add, DropDownList, x250 y136 w230 r12 +0x210 Choose1 AltSubmit vShortcutSection hwndshortcutSectionHwnd gShortcutEditorSection, Ответы|Полезное|Наказания
 Gui, Shortcuts: Add, DropDownList, x500 y136 w450 r12 +0x210 vShortcutChapter hwndshortcutChapterHwnd gShortcutEditorRefresh
 for _, comboHwnd in [shortcutActionHwnd, shortcutSectionHwnd, shortcutChapterHwnd]
     ShortcutStyleCombo(comboHwnd)
@@ -2267,12 +2517,29 @@ Gui, Shortcuts: Add, Edit, x30 y210 w330 h30 -Border Background343746 Limit40 vS
 Gui, Shortcuts: Add, Text, x380 y215 w570 vShortcutTranslit hwndshortcutTranslitHwnd
 Gui, Shortcuts: Add, Text, x30 y260 w450 +BackgroundTrans vShortcutTextLabel, % AdminGender = "female" ? "Основной текст (женский род)" : "Основной текст (мужской род)"
 Gui, Shortcuts: Add, Text, x500 y260 w450 +BackgroundTrans vShortcutOtherTextLabel, % AdminGender = "female" ? "Текст в мужском роде" : "Текст в женском роде"
-Gui, Shortcuts: Add, Edit, x30 y286 w450 h303 +Multi +Wrap +VScroll -Border Background343746 Limit2000 vShortcutText gShortcutEditorTextChanged
-Gui, Shortcuts: Add, Edit, x500 y286 w450 h303 +Multi +Wrap +VScroll -Border Background343746 Limit2000 vShortcutOtherText gShortcutEditorOtherTextChanged
-Gui, Shortcuts: Add, ListView, x30 y183 w920 h278 -Multi -SortHdr -Border Background292C38 AltSubmit vShortcutList hwndshortcutListHwnd gShortcutEditorSelect, Сокращение|Текст
+Gui, Shortcuts: Add, Edit, x30 y286 w450 h303 +Multi +Wrap +VScroll -Border Background343746 Limit2000 vShortcutText hwndshortcutTextHwnd gShortcutEditorTextChanged
+Gui, Shortcuts: Add, Edit, x500 y286 w450 h303 +Multi +Wrap +VScroll -Border Background343746 Limit2000 vShortcutOtherText hwndshortcutOtherTextHwnd gShortcutEditorOtherTextChanged
+Gui, Shortcuts: Add, Progress, x30 y183 w920 h26 c292C38 Background292C38 Disabled vShortcutListHeaderBg, 100
+Gui, Shortcuts: Add, Text, x38 y183 w157 h26 +0x200 +BackgroundTrans vShortcutListHeaderAlias, Сокращение
+Gui, Shortcuts: Add, Text, x203 y183 w729 h26 +0x200 +BackgroundTrans vShortcutListHeaderText, Текст
+Gui, Shortcuts: Add, ListView, x30 y209 w920 h252 -Multi -Hdr NoSortHdr -Border Background292C38 AltSubmit vShortcutList hwndshortcutListHwnd gShortcutEditorSelect, Сокращение|Текст
+ShortcutHookListPainting(shortcutEditorHwnd, shortcutListHwnd)
+shortcutListFont := DllCall("SendMessageW", "Ptr", shortcutListHwnd, "UInt", 0x31, "Ptr", 0, "Ptr", 0, "Ptr")
 ; LVS_EX_DOUBLEBUFFER: список перерисовывается без промежуточных кадров.
 SendMessage, 0x1036, 0x10000, 0x10000,, % "ahk_id " shortcutListHwnd
-Gui, Shortcuts: Add, Edit, x30 y474 w920 h115 ReadOnly -Border Background292C38 vShortcutPreview
+Gui, Shortcuts: Add, Edit, x30 y474 w920 h115 ReadOnly -Border Background292C38 vShortcutPreview hwndshortcutPreviewHwnd
+shortcutScrollTracks := {}
+shortcutScrollAreas := [{hwnd: shortcutTextHwnd, x: 462, y: 286, h: 303, type: "edit"}
+    , {hwnd: shortcutOtherTextHwnd, x: 932, y: 286, h: 303, type: "edit"}
+    , {hwnd: shortcutListHwnd, x: 932, y: 209, h: 252, type: "list"}
+    , {hwnd: shortcutPreviewHwnd, x: 932, y: 474, h: 115, type: "edit"}]
+for index, area in shortcutScrollAreas {
+    Gui, Shortcuts: Add, Text, % "x" area.x " y" area.y " w18 h" area.h " +0x100 Background292C38 hwndtrackHwnd vShortcutScrollTrack" index, % Chr(160)
+    Gui, Shortcuts: Add, Progress, % "x" (area.x + 5) " y" (area.y + 2) " w8 h30 cEA3479 BackgroundEA3479 Disabled Hidden vShortcutScrollThumb" index, 100
+    shortcutScrollTracks[trackHwnd] := index
+    area.track := trackHwnd
+    ShortcutClipScrollControl(area.hwnd, index <= 2 ? 450 : 920, area.h)
+}
 Gui, Shortcuts: Font, s9 cE9EAF0, Segoe UI
 Gui, Shortcuts: Add, Text, x152 y621 w520 h38 Background12131A vShortcutStatus
 Gui, Shortcuts: Font, s10 w700 q0 cFFFFFF, Segoe UI
@@ -2281,7 +2548,34 @@ Gui, Shortcuts: Add, Text, x700 y621 w264 h36 +0x200 +0x100 Center vShortcutConf
 Gui, Shortcuts: Font, s10 w700 q0 cAEB1BF, Segoe UI
 Gui, Shortcuts: Add, Text, x700 y621 w264 h36 +0x200 Center vShortcutConfirmInactive hwndshortcutConfirmInactiveHwnd Hidden
 Gosub, ShortcutEditorSection
+if (shortcutOpenRecord) {
+    for _, ref in shortcutRecords[shortcutOpenRecord].refs {
+        if (ref.section != "answers" && ref.section != "useful" && ref.section != "punishments")
+            continue
+        if (shortcutOpenSection != "" && (ref.section != shortcutOpenSection || ref.chapter != shortcutOpenChapter))
+            continue
+        GuiControl, Shortcuts:Choose, ShortcutSection, % ref.section = "answers" ? 1 : ref.section = "useful" ? 2 : 3
+        Gosub, ShortcutEditorSection
+        GuiControl, Shortcuts:ChooseString, ShortcutChapter, % ref.chapter
+        GuiControl, Shortcuts:Choose, ShortcutAction, 3
+        Gosub, ShortcutEditorRefresh
+        for rowIndex, row in shortcutRows {
+            if (row.index = shortcutOpenRecord) {
+                Gui, Shortcuts: Default
+                Gui, ListView, ShortcutList
+                LV_Modify(rowIndex, "Select Focus Vis")
+                Gosub, ShortcutEditorUpdatePreview
+                break
+            }
+        }
+        break
+    }
+    shortcutOpenRecord := 0
+    shortcutOpenSection := ""
+    shortcutOpenChapter := ""
+}
 Gui, Shortcuts: Show, w980 h674, Редактор сокращений
+SetTimer, ShortcutRefreshScroll, 100
 return
 
 ShortcutEditorDrag:
@@ -2292,8 +2586,93 @@ return
 ShortcutEditorClose:
 ShortcutsGuiClose:
 ShortcutsGuiEscape:
+SetTimer, ShortcutEditorDeferredSelection, Off
+SetTimer, ShortcutRefreshScroll, Off
 Gui, Shortcuts: Destroy
+shortcutEditorHwnd := 0
+shortcutScrollTracks := {}
+shortcutScrollDragging := 0
 return
+
+ShortcutRefreshScroll:
+ShortcutUpdateScroll()
+return
+
+ShortcutClipScrollControl(hwnd, width, height) {
+    region := DllCall("CreateRectRgn", "Int", 0, "Int", 0, "Int", width - 18, "Int", height, "Ptr")
+    if !DllCall("SetWindowRgn", "Ptr", hwnd, "Ptr", region, "Int", 1)
+        DllCall("DeleteObject", "Ptr", region)
+}
+
+ShortcutScrollInfo(index) {
+    global shortcutScrollAreas
+    area := shortcutScrollAreas[index]
+    if (area.type = "list") {
+        total := DllCall("SendMessage", "Ptr", area.hwnd, "UInt", 0x1004, "Ptr", 0, "Ptr", 0, "Int")
+        first := DllCall("SendMessage", "Ptr", area.hwnd, "UInt", 0x1027, "Ptr", 0, "Ptr", 0, "Int")
+        visible := DllCall("SendMessage", "Ptr", area.hwnd, "UInt", 0x1028, "Ptr", 0, "Ptr", 0, "Int")
+    } else {
+        total := DllCall("SendMessage", "Ptr", area.hwnd, "UInt", 0xBA, "Ptr", 0, "Ptr", 0, "Int")
+        first := DllCall("SendMessage", "Ptr", area.hwnd, "UInt", 0xCE, "Ptr", 0, "Ptr", 0, "Int")
+        dc := DllCall("GetDC", "Ptr", area.hwnd, "Ptr")
+        font := DllCall("SendMessage", "Ptr", area.hwnd, "UInt", 0x31, "Ptr", 0, "Ptr", 0, "Ptr")
+        oldFont := DllCall("SelectObject", "Ptr", dc, "Ptr", font, "Ptr")
+        VarSetCapacity(metrics, 60, 0)
+        DllCall("GetTextMetricsW", "Ptr", dc, "Ptr", &metrics)
+        lineHeight := NumGet(metrics, 0, "Int")
+        DllCall("SelectObject", "Ptr", dc, "Ptr", oldFont)
+        DllCall("ReleaseDC", "Ptr", area.hwnd, "Ptr", dc)
+        visible := Max(1, Floor((area.h - 8) / Max(1, lineHeight)))
+    }
+    maxFirst := Max(0, total - visible)
+    thumbHeight := maxFirst ? Max(30, Round(area.h * visible / total)) : 0
+    return {first: Min(first, maxFirst), maxFirst: maxFirst, thumbHeight: thumbHeight}
+}
+
+ShortcutUpdateScroll() {
+    global shortcutScrollAreas
+    for index, area in shortcutScrollAreas {
+        thumb := "ShortcutScrollThumb" index
+        if (!DllCall("IsWindowVisible", "Ptr", area.track)) {
+            GuiControl, Shortcuts:Hide, %thumb%
+            continue
+        }
+        info := ShortcutScrollInfo(index)
+        if (info.maxFirst <= 0) {
+            GuiControl, Shortcuts:Hide, %thumb%
+            continue
+        }
+        y := area.y + Round(info.first / info.maxFirst * (area.h - info.thumbHeight))
+        GuiControl, Shortcuts:MoveDraw, %thumb%, % "x" (area.x + 5) " y" y " w8 h" info.thumbHeight
+        GuiControl, Shortcuts:Show, %thumb%
+    }
+}
+
+ShortcutScrollToMouse(index) {
+    global shortcutScrollAreas
+    area := shortcutScrollAreas[index]
+    info := ShortcutScrollInfo(index)
+    if (info.maxFirst <= 0)
+        return
+    CoordMode, Mouse, Client
+    MouseGetPos, mouseX, mouseY
+    fraction := (mouseY - area.y - info.thumbHeight / 2) / (area.h - info.thumbHeight)
+    ShortcutScrollTo(index, Round(Max(0, Min(1, fraction)) * info.maxFirst))
+}
+
+ShortcutScrollTo(index, target) {
+    global shortcutScrollAreas
+    area := shortcutScrollAreas[index]
+    info := ShortcutScrollInfo(index)
+    target := Max(0, Min(info.maxFirst, target))
+    if (area.type = "list") {
+        VarSetCapacity(rect, 16, 0)
+        if DllCall("SendMessage", "Ptr", area.hwnd, "UInt", 0x100E, "Ptr", 0, "Ptr", &rect)
+            DllCall("SendMessage", "Ptr", area.hwnd, "UInt", 0x1014, "Ptr", 0, "Ptr", (target - info.first) * (NumGet(rect, 12, "Int") - NumGet(rect, 4, "Int")))
+    } else
+        DllCall("SendMessage", "Ptr", area.hwnd, "UInt", 0xB6, "Ptr", 0, "Ptr", target - info.first)
+    ShortcutUpdateScroll()
+}
 
 ShortcutEditorSection:
 GuiControlGet, ShortcutSection, Shortcuts:, ShortcutSection
@@ -2307,6 +2686,7 @@ return
 
 ShortcutEditorRefresh:
 Gui, Shortcuts: Submit, NoHide
+SetTimer, ShortcutEditorDeferredSelection, Off
 deleting := ShortcutAction = 2
 editing := ShortcutAction = 3
 shortcutFormControls := ["ShortcutAlias", "ShortcutText", "ShortcutOtherText", "ShortcutAliasLabel", "ShortcutTextLabel", "ShortcutOtherTextLabel", "ShortcutTranslit"]
@@ -2315,7 +2695,19 @@ for i, control in shortcutFormControls {
     GuiControl, Shortcuts:Move, %control%, % formPositions[i]
     GuiControl, % "Shortcuts:" (deleting ? "Hide" : "Show"), %control%
 }
-GuiControl, Shortcuts:Move, ShortcutList, % editing ? "h158" : "h278"
+GuiControl, Shortcuts:Move, ShortcutList, % editing ? "y209 h132" : "y209 h252"
+for _, control in ["ShortcutListHeaderBg", "ShortcutListHeaderAlias", "ShortcutListHeaderText"]
+    GuiControl, % "Shortcuts:" (ShortcutAction = 1 ? "Hide" : "Show"), %control%
+for index, area in shortcutScrollAreas {
+    area.y := index <= 2 ? (editing ? 444 : 286) : index = 3 ? 209 : 474
+    area.h := index <= 2 ? (editing ? 145 : 303) : index = 3 ? (editing ? 132 : 252) : 115
+    visible := index <= 2 ? !deleting : index = 3 ? ShortcutAction != 1 : deleting
+    track := "ShortcutScrollTrack" index
+    GuiControl, Shortcuts:Move, %track%, % "x" area.x " y" area.y " w18 h" area.h
+    ShortcutClipScrollControl(area.hwnd, index <= 2 ? 450 : 920, area.h)
+    GuiControl, % "Shortcuts:" (visible ? "Show" : "Hide"), %track%
+    GuiControl, Shortcuts:Hide, % "ShortcutScrollThumb" index
+}
 GuiControl, % "Shortcuts:" (ShortcutAction = 1 ? "Hide" : "Show"), ShortcutList
 GuiControl, % "Shortcuts:" (deleting ? "Show" : "Hide"), ShortcutPreview
 GuiControl, Shortcuts:, ShortcutStatus,
@@ -2340,6 +2732,7 @@ shortcutPreviousAction := ShortcutAction
 Gui, Shortcuts: Default
 Gui, ListView, ShortcutList
 GuiControl, Shortcuts:-Redraw, ShortcutList
+shortcutPaintRow := 0
 LV_Delete()
 shortcutRows := []
 section := shortcutSections[ShortcutSection]
@@ -2348,15 +2741,19 @@ for recordIndex, record in shortcutRecords {
         if (ref.section != section || ref.chapter != ShortcutChapter || ShortcutKey(ref.alias) != record.alias)
             continue
         body := ShortcutReferenceBody(ref)
-        shortcutRows.Push({index: recordIndex, alias: ref.alias, body: body
+        listText := StrLen(body) > 220 ? SubStr(body, 1, 219) "…" : body
+        shortcutRows.Push({index: recordIndex, alias: ref.alias, body: body, listText: listText
             , male: ref.body, female: ref.female != "" ? ref.female : ref.body})
-        LV_Add("", ref.alias, body)
+        LV_Add("", ref.alias, listText)
         break
     }
 }
 LV_ModifyCol(1, 165)
 LV_ModifyCol(2, 730)
+shortcutListFirstColWidth := DllCall("SendMessageW", "Ptr", shortcutListHwnd, "UInt", 0x101D, "Ptr", 0, "Ptr", 0, "Int")
+shortcutListVisibleRows := DllCall("SendMessageW", "Ptr", shortcutListHwnd, "UInt", 0x1028, "Ptr", 0, "Ptr", 0, "Int")
 GuiControl, Shortcuts:+Redraw, ShortcutList
+ShortcutUpdateScroll()
 shortcutPreviewRow := -1
 Gosub, ShortcutEditorUpdatePreview
 if (!shortcutRows.Length())
@@ -2388,21 +2785,30 @@ if (!shortcutOtherTextManual && ShortcutAction != 2) {
     GuiControl, Shortcuts:, ShortcutOtherText, %otherText%
 }
 ShortcutEditorUpdateFormConfirm()
+ShortcutUpdateScroll()
 return
 
 ShortcutEditorOtherTextChanged:
 shortcutOtherTextManual := true
 ShortcutEditorUpdateFormConfirm()
+ShortcutUpdateScroll()
 return
 
 ShortcutEditorSelect:
-if (A_GuiEvent != "I" || !InStr(ErrorLevel, "S"))
-    return
+if (A_GuiEvent = "I" && InStr(ErrorLevel, "S"))
+    SetTimer, ShortcutEditorDeferredSelection, -15
+return
+
+ShortcutEditorDeferredSelection:
+if (shortcutListHwnd && DllCall("IsWindowVisible", "Ptr", shortcutListHwnd))
+    Gosub, ShortcutEditorUpdatePreview
+return
 
 ShortcutEditorUpdatePreview:
 Gui, Shortcuts: Default
 Gui, ListView, ShortcutList
 shortcutSelectedRow := LV_GetNext()
+shortcutPaintRow := shortcutSelectedRow
 if (shortcutSelectedRow = shortcutPreviewRow)
     return
 shortcutPreviewRow := shortcutSelectedRow
@@ -2537,24 +2943,25 @@ if (ShortcutAction != 2) {
     if (ShortcutAction = 3 && alias == oldAlias && keepMale && keepFemale)
         return
 } else {
-    prompt := "Удалить " oldAlias " и его варианты раскладки?`n`n" selected.body
-        . "`n`nСокращение исчезнет из всех глав, где оно встречается."
-    Gui, Shortcuts: +OwnDialogs
-    MsgBox, 308, Подтверждение удаления, %prompt%
-    IfMsgBox, No
+    deleted := ShortcutDeleteRecord(oldIndex)
+    if (deleted != 1) {
+        if (deleted = -1)
+            GuiControl, Shortcuts:, ShortcutStatus, Не удалось обновить файл Shortcuts.tsv.
         return
+    }
+    result := "Удалено: " oldAlias
+    Gosub, ShortcutEditorClose
+    Gosub, ShortcutEditorRefreshMain
+    GuiControl, Main:, MainFooterHint, %result%
+    return
 }
 newRecords := shortcutRecords.Clone()
-if (ShortcutAction = 2) {
-    newRecords.RemoveAt(oldIndex)
-} else {
-    replacement := ShortcutEditedRecord(shortcutRecords[oldIndex], section, ShortcutChapter, alias
-        , maleBody, femaleBody, keepMale, keepFemale)
-    if (oldIndex)
-        newRecords[oldIndex] := replacement
-    else
-        newRecords.Push(replacement)
-}
+replacement := ShortcutEditedRecord(shortcutRecords[oldIndex], section, ShortcutChapter, alias
+    , maleBody, femaleBody, keepMale, keepFemale)
+if (oldIndex)
+    newRecords[oldIndex] := replacement
+else
+    newRecords.Push(replacement)
 if !ShortcutEditorSave(newRecords) {
     GuiControl, Shortcuts:, ShortcutStatus, Не удалось обновить файл Shortcuts.tsv.
     return
@@ -2562,12 +2969,14 @@ if !ShortcutEditorSave(newRecords) {
 if (oldIndex)
     ShortcutApplyRecord(shortcutRecords[oldIndex], "Off")
 shortcutRecords := newRecords
-if (ShortcutAction != 2) {
-    ShortcutApplyRecord(replacement, "On")
-    result := (ShortcutAction = 3 ? "Изменено: " : "Добавлено: ") alias (pair = "" ? "" : " и " pair)
-} else
-    result := "Удалено: " oldAlias
-Gui, Shortcuts: Destroy
+ShortcutApplyRecord(replacement, "On")
+result := (ShortcutAction = 3 ? "Изменено: " : "Добавлено: ") alias (pair = "" ? "" : " и " pair)
+Gosub, ShortcutEditorClose
+Gosub, ShortcutEditorRefreshMain
+GuiControl, Main:, MainFooterHint, %result%
+return
+
+ShortcutEditorRefreshMain:
 GuiControlGet, visibleTab, Main:, MainTabs
 if (visibleTab = "Справочник" || visibleTab = 3) {
     if (mainCurrentSection = "commands")
@@ -2575,7 +2984,97 @@ if (visibleTab = "Справочник" || visibleTab = 3) {
     else if (!mainChaptersVisible && (mainCurrentSection = "answers" || mainCurrentSection = "punishments" || mainCurrentSection = "useful"))
         MainRenderSearchSection(mainCurrentSection, mainCurrentSection = "answers" ? "MainAnswersSearch" : "MainUsefulSearch")
 }
-GuiControl, Main:, MainFooterHint, %result%
+return
+
+ShortcutDeleteRecord(index) {
+    global shortcutRecords, shortcutDeletedAlias
+    record := shortcutRecords[index]
+    if (!IsObject(record))
+        return false
+    shortcutDeletedAlias := record.alias
+    if !ShortcutDeleteConfirm(record)
+        return false
+    newRecords := shortcutRecords.Clone()
+    newRecords.RemoveAt(index)
+    if !ShortcutEditorSave(newRecords)
+        return -1
+    ShortcutApplyRecord(record, "Off")
+    shortcutRecords := newRecords
+    return 1
+}
+
+ShortcutDeleteConfirm(record) {
+    global shortcutEditorHwnd, shortcutDeleteGuiHwnd, shortcutDeleteConfirmed
+    global ShortcutDeleteCard, ShortcutDeletePreviewBackground, ShortcutDeletePreview
+    shortcutDeleteConfirmed := false
+    Gui, ShortcutDelete: Destroy
+    if (shortcutEditorHwnd)
+        Gui, ShortcutDelete: +OwnerShortcuts -Caption +Border +HwndshortcutDeleteGuiHwnd
+    else
+        Gui, ShortcutDelete: +OwnerMain -Caption +Border +HwndshortcutDeleteGuiHwnd
+    Gui, ShortcutDelete: Color, 12131A, 1B1D27
+    Gui, ShortcutDelete: Add, Progress, x0 y0 w500 h78 c1B1D27 Background1B1D27 Disabled, 100
+    Gui, ShortcutDelete: Font, s16 w700 cFFFFFF, Segoe UI
+    Gui, ShortcutDelete: Add, Text, x24 y17 w300 h30 +BackgroundTrans gShortcutDeleteDrag, MAJESTIC
+    Gui, ShortcutDelete: Font, s9 w600 cEA3479, Segoe UI
+    Gui, ShortcutDelete: Add, Text, x26 y47 w300 h18 +BackgroundTrans gShortcutDeleteDrag, ADMIN  /  BINDER
+    Gui, ShortcutDelete: Font, s15 w400 cAEB1BF, Segoe UI
+    Gui, ShortcutDelete: Add, Text, x459 y22 w27 h30 +0x200 +0x100 Center +BackgroundTrans gShortcutDeleteCancel, ×
+    Gui, ShortcutDelete: Add, Progress, x0 y77 w500 h2 cEA3479 BackgroundEA3479 Disabled, 100
+    Gui, ShortcutDelete: Add, Progress, x16 y96 w468 h150 c1B1D27 Background1B1D27 Disabled vShortcutDeleteCard, 100
+    Gui, ShortcutDelete: Font, s14 w700 cFFFFFF, Segoe UI
+    Gui, ShortcutDelete: Add, Text, x32 y110 w436 h30 +BackgroundTrans, % "Удалить " record.alias "?"
+    preview := ShortcutReferenceBody(record.refs[1])
+    Gui, ShortcutDelete: Add, Progress, x32 y151 w436 h48 c292C38 Background292C38 Disabled vShortcutDeletePreviewBackground, 100
+    Gui, ShortcutDelete: Font, s10 cE9EAF0, Segoe UI
+    Gui, ShortcutDelete: Add, Text, x40 y157 w420 +BackgroundTrans vShortcutDeletePreview, %preview%
+    GuiControlGet, previewPos, ShortcutDelete:Pos, ShortcutDeletePreview
+    extraHeight := Max(0, previewPosH - 38)
+    GuiControl, ShortcutDelete:Move, ShortcutDeletePreviewBackground, % "h" (48 + extraHeight)
+    GuiControl, ShortcutDelete:Move, ShortcutDeleteCard, % "h" (150 + extraHeight)
+    Gui, ShortcutDelete: Font, s9 c989DAD, Segoe UI
+    Gui, ShortcutDelete: Add, Text, % "x32 y" (210 + extraHeight) " w436 h32 +BackgroundTrans", Сокращение, оба текста и команды другой раскладки исчезнут из всех глав.
+    Gui, ShortcutDelete: Font, s10 w700 cFFFFFF, Segoe UI
+    Gui, ShortcutDelete: Add, Text, % "x16 y" (259 + extraHeight) " w160 h36 +0x200 +0x100 Center Background292C38 gShortcutDeleteCancel", ОТМЕНА
+    Gui, ShortcutDelete: Add, Progress, % "x324 y" (259 + extraHeight) " w160 h36 cEA3479 BackgroundEA3479 Disabled", 100
+    Gui, ShortcutDelete: Add, Text, % "x324 y" (259 + extraHeight) " w160 h36 +0x200 +0x100 Center +BackgroundTrans gShortcutDeleteAccept", УДАЛИТЬ
+    Gui, ShortcutDelete: Add, Button, Hidden Default gShortcutDeleteAccept
+    if (shortcutEditorHwnd)
+        Gui, Shortcuts: +Disabled
+    else
+        Gui, Main: +Disabled
+    Gui, ShortcutDelete: Show, % "w500 h" (311 + extraHeight), Подтверждение удаления
+    WinWaitClose, % "ahk_id " shortcutDeleteGuiHwnd
+    if (shortcutEditorHwnd)
+        Gui, Shortcuts: -Disabled
+    else
+        Gui, Main: -Disabled
+    return shortcutDeleteConfirmed
+}
+
+ShortcutDeleteDrag:
+DllCall("ReleaseCapture")
+PostMessage, 0xA1, 2,,, % "ahk_id " shortcutDeleteGuiHwnd
+return
+
+ShortcutDeleteAccept:
+shortcutDeleteConfirmed := true
+Gosub, ShortcutDeleteDismiss
+return
+
+ShortcutDeleteDismiss:
+if (shortcutEditorHwnd)
+    Gui, Shortcuts: -Disabled
+else
+    Gui, Main: -Disabled
+Gui, ShortcutDelete: Destroy
+return
+
+ShortcutDeleteCancel:
+ShortcutDeleteGuiClose:
+ShortcutDeleteGuiEscape:
+shortcutDeleteConfirmed := false
+Gosub, ShortcutDeleteDismiss
 return
 
 ShortcutStyleCombo(hwnd) {
@@ -2652,37 +3151,86 @@ ShortcutComboText(hwnd, index) {
     return StrGet(&text, length, "UTF-16")
 }
 
+ShortcutHookListPainting(editorHwnd, listHwnd) {
+    static parentProc := RegisterCallback("ShortcutListParentProc", "Fast", 6)
+    static listProc := RegisterCallback("ShortcutListProc", "Fast", 6)
+    DllCall("Comctl32\SetWindowSubclass", "Ptr", editorHwnd, "Ptr", parentProc, "Ptr", 1, "Ptr", parentProc)
+    DllCall("Comctl32\SetWindowSubclass", "Ptr", listHwnd, "Ptr", listProc, "Ptr", 1, "Ptr", listProc)
+}
+
+ShortcutListParentProc(hwnd, msg, wParam, lParam, id, proc) {
+    if (msg = 0x4E && lParam) { ; WM_NOTIFY
+        result := ShortcutDrawSelectedRow(wParam, lParam, msg, hwnd)
+        if (result != "")
+            return result
+    } else if (msg = 0x82) ; WM_NCDESTROY
+        DllCall("Comctl32\RemoveWindowSubclass", "Ptr", hwnd, "Ptr", proc, "Ptr", id)
+    return DllCall("Comctl32\DefSubclassProc", "Ptr", hwnd, "UInt", msg, "Ptr", wParam, "Ptr", lParam, "Ptr")
+}
+
+ShortcutListProc(hwnd, msg, wParam, lParam, id, proc) {
+    global shortcutPaintRow, shortcutPaintRect, shortcutListVisibleRows
+    if (shortcutPaintRow && (msg = 0xF || msg = 0x317 || msg = 0x318)) {
+        top := DllCall("SendMessageW", "Ptr", hwnd, "UInt", 0x1027, "Ptr", 0, "Ptr", 0, "Int")
+        VarSetCapacity(bounds, 16, 0)
+        previousRect := shortcutPaintRect
+        shortcutPaintRect := 0
+        if (shortcutPaintRow > top && shortcutPaintRow <= top + shortcutListVisibleRows + 1
+            && DllCall("SendMessageW", "Ptr", hwnd, "UInt", 0x100E, "Ptr", shortcutPaintRow - 1, "Ptr", &bounds))
+            shortcutPaintRect := &bounds
+        result := DllCall("Comctl32\DefSubclassProc", "Ptr", hwnd, "UInt", msg, "Ptr", wParam, "Ptr", lParam, "Ptr")
+        shortcutPaintRect := previousRect
+        return result
+    } else if (msg = 0x82)
+        DllCall("Comctl32\RemoveWindowSubclass", "Ptr", hwnd, "Ptr", proc, "Ptr", id)
+    return DllCall("Comctl32\DefSubclassProc", "Ptr", hwnd, "UInt", msg, "Ptr", wParam, "Ptr", lParam, "Ptr")
+}
+
 ShortcutDrawSelectedRow(wParam, lParam, msg, hwnd) {
-    global shortcutEditorHwnd, shortcutListHwnd, shortcutRows
-    if (hwnd != shortcutEditorHwnd || NumGet(lParam + 0, 0, "Ptr") != shortcutListHwnd
-        || NumGet(lParam + 0, 2 * A_PtrSize, "Int") != -12) ; NM_CUSTOMDRAW
+    global shortcutEditorHwnd, shortcutListHwnd, shortcutRows, shortcutPaintRow, shortcutListFirstColWidth
+    global shortcutPaintRect, shortcutListFont
+    if (hwnd != shortcutEditorHwnd || NumGet(lParam + 0, 0, "Ptr") != shortcutListHwnd)
         return
     headerSize := 3 * A_PtrSize
+    notification := NumGet(lParam + 0, 2 * A_PtrSize, "Int")
+    if (notification = -101) { ; LVN_ITEMCHANGED
+        stateChanged := NumGet(lParam + 0, headerSize + 16, "UInt") & 8
+        if (stateChanged) {
+            rowNumber := NumGet(lParam + 0, headerSize, "Int") + 1
+            newState := NumGet(lParam + 0, headerSize + 8, "UInt")
+            if (newState & 2)
+                shortcutPaintRow := rowNumber
+            else if (rowNumber = shortcutPaintRow)
+                shortcutPaintRow := 0
+        }
+        return
+    }
+    if (notification != -12) ; NM_CUSTOMDRAW
+        return
     stage := NumGet(lParam + 0, headerSize, "UInt")
     if (stage = 1)
-        return 0x20 ; CDRF_NOTIFYITEMDRAW
-    if (stage != 0x10001)
+        return shortcutPaintRect ? 0x10 : 0 ; CDRF_NOTIFYPOSTPAINT
+    if (stage != 2 || !shortcutPaintRect)
         return 0
-    dcOffset := headerSize + A_PtrSize
-    dc := NumGet(lParam + 0, dcOffset, "Ptr")
-    item := NumGet(lParam + 0, dcOffset + A_PtrSize + 16, "UPtr")
-    if !(DllCall("SendMessageW", "Ptr", shortcutListHwnd, "UInt", 0x102C, "Ptr", item, "Ptr", 2) & 2)
-        return 0
-    row := shortcutRows[item + 1]
+    row := shortcutRows[shortcutPaintRow]
     if (!IsObject(row))
         return 0
-    VarSetCapacity(rect, 16, 0) ; LVIR_BOUNDS
-    if !DllCall("SendMessageW", "Ptr", shortcutListHwnd, "UInt", 0x100E, "Ptr", item, "Ptr", &rect)
-        return 0
+    ; Список сам рисует строки. Поверх него окрашиваем только одно видимое выделение.
+    dc := NumGet(lParam + 0, headerSize + A_PtrSize, "Ptr")
+    oldFont := shortcutListFont ? DllCall("SelectObject", "Ptr", dc, "Ptr", shortcutListFont, "Ptr") : 0
+    VarSetCapacity(rect, 16)
+    DllCall("RtlMoveMemory", "Ptr", &rect, "Ptr", shortcutPaintRect, "UPtr", 16)
     DllCall("FillRect", "Ptr", dc, "Ptr", &rect, "Ptr", ShortcutThemeBrush("accent"))
     right := NumGet(rect, 8, "Int")
-    split := NumGet(rect, 0, "Int") + DllCall("SendMessageW", "Ptr", shortcutListHwnd, "UInt", 0x101D, "Ptr", 0, "Ptr", 0, "Int")
+    split := NumGet(rect, 0, "Int") + shortcutListFirstColWidth
     NumPut(split, rect, 8, "Int")
     ShortcutDrawText(dc, &rect, row.alias, false, true)
     NumPut(split, rect, 0, "Int")
     NumPut(right, rect, 8, "Int")
-    ShortcutDrawText(dc, &rect, row.body, false, true)
-    return 4 ; CDRF_SKIPDEFAULT
+    ShortcutDrawText(dc, &rect, row.listText, false, true)
+    if (oldFont)
+        DllCall("SelectObject", "Ptr", dc, "Ptr", oldFont)
+    return 0
 }
 
 ShortcutDrawText(dc, rect, text, center := false, white := false) {
@@ -2801,7 +3349,7 @@ ShortcutEditedRecord(old, section, chapter, alias, male, female, keepMale, keepF
                     continue
                 keep := gender = "male" ? keepMale : keepFemale
                 mode := variant.mode
-                if (!keep && mode != "count" && mode != "paste")
+                if (!keep && mode != "count" && mode != "paste" && mode != "send")
                     mode := mode = "dis" || mode = "gadis" || mode = "zgadis" ? "paste" : "text"
                 record.hot.Push({alias: target, gender: gender, mode: mode
                     , body: keep ? variant.body : gender = "male" ? male : female})
@@ -2813,13 +3361,13 @@ ShortcutEditedRecord(old, section, chapter, alias, male, female, keepMale, keepF
         if (target = "")
             continue
         if (!seen.HasKey(target "|male") && !seen.HasKey(target "|female") && ShortcutEditorSameBody(male, female)) {
-            record.hot.Push({alias: target, gender: "all", mode: "text", body: male})
+            record.hot.Push({alias: target, gender: "all", mode: section = "punishments" ? "send" : "text", body: male})
             continue
         }
         if (!seen.HasKey(target "|male"))
-            record.hot.Push({alias: target, gender: "male", mode: "text", body: male})
+            record.hot.Push({alias: target, gender: "male", mode: section = "punishments" ? "send" : "text", body: male})
         if (!seen.HasKey(target "|female"))
-            record.hot.Push({alias: target, gender: "female", mode: "text", body: female})
+            record.hot.Push({alias: target, gender: "female", mode: section = "punishments" ? "send" : "text", body: female})
     }
     return record
 }
@@ -2864,7 +3412,7 @@ ShortcutSendReply(mode, body) {
 }
 
 ShortcutEditorInit() {
-    global shortcutRecords := [], shortcutSections := ["answers", "useful"]
+    global shortcutRecords := [], shortcutSections := ["answers", "useful", "punishments"]
     global shortcutPath := A_ScriptDir "\res\Shortcuts.tsv", shortcutDiskData, shortcutReadError := false
     if (!FileExist(shortcutPath))
         ShortcutEditorSave(shortcutRecords, true)
@@ -3032,12 +3580,13 @@ BinderGetSectionContent(sectionName) {
         content .= "Значок ✓ рядом с полем «Ваш статик» сохраняет только статик. Знак − скрывает главное окно, знак × закрывает биндер.`r`n`r`n"
         content .= "РАЗДЕЛЫ СЛЕВА`r`n"
         content .= "«Общая информация» — описание интерфейса.`r`n"
-        content .= "«Команды» — сокращения команд. «Ответы» — выберите главу: Вики, Информация, Адм Ответы, asms, Приветствие или Discord. Поиск охватывает все главы «Ответов»; «← К ГЛАВАМ» возвращает к выбору.`r`n"
-        content .= "«Наказания» — выберите главу demorgan, mute, warn, ban или gunban либо ищите по всему разделу; для выдачи наказания откройте отдельный редактор в «Биндах».`r`n"
-        content .= "«Полезное» — игровые подсказки, навыки и телепорты по главам. Поиск охватывает все главы только этого раздела.`r`n"
+        content .= "«Команды» — сокращения команд. «Ответы» — выберите главу: Вики, Информация, Адм Ответы, asms, Приветствие или Discord. «← К ГЛАВАМ» возвращает к выбору.`r`n"
+        content .= "«Наказания» — выберите главу demorgan, mute, warn, ban или gunban; для выдачи наказания откройте отдельный редактор в «Биндах».`r`n"
+        content .= "«Полезное» — игровые подсказки, навыки и телепорты по главам. Поиск в «Ответах», «Наказаниях» и «Полезном» охватывает все три раздела; «Общая информация» и «Команды» в нём не участвуют.`r`n"
+        content .= "В главах «Ответов» и «Полезного», а также в результатах поиска значок ✎ справа от записи открывает её в редакторе, а 🗑 удаляет после подтверждения вместе с обеими формами и командой другой раскладки.`r`n"
         content .= "Текст раздела прокручивается колёсиком мыши или полосой справа. Чтобы вернуться, выберите другой раздел либо «БИНДЫ» или «НАСТРОЙКИ».`r`n`r`n"
         content .= "РЕДАКТОР СОКРАЩЕНИЙ`r`n"
-        content .= "Нажмите «Редактор сокращений» в меню слева. Выберите действие, раздел «Ответы» или «Полезное» и нужную главу.`r`n"
+        content .= "Нажмите «Редактор сокращений» в меню слева. Выберите действие, раздел «Ответы», «Полезное» или «Наказания» и нужную главу.`r`n"
         content .= "Добавить — введите сокращение с точки, например .ку, и основной текст в роде, выбранном в настройках. Биндер предложит текст во втором роде и создаст сокращение для другой раскладки. Проверьте вторую форму, при необходимости исправьте её и нажмите «Подтвердить добавление».`r`n"
         content .= "Изменить — выберите запись, исправьте сокращение или текст в любой из двух форм и нажмите «Сохранить изменения». Обе формы сохраняются вместе, а при переименовании обновляется сокращение для другой раскладки.`r`n"
         content .= "Удалить — выберите запись, нажмите «Подтвердить удаление», затем «Да». Из всех глав, где встречается сокращение, удалятся обе формы и варианты для другой раскладки.`r`n"
