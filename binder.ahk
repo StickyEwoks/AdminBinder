@@ -2081,12 +2081,29 @@ ShortcutApplyRecord(record, state) {
             continue
         }
         if (variant.mode = "send")
-            Hotstring(":?C1:" alias, variant.body, "On")
+            Hotstring(":?:" alias, ShortcutSendLiteral.Bind(variant.body), "On")
         else if (variant.mode = "text")
             Hotstring(":?TC1:" alias, variant.body, "On")
         else
             Hotstring(":?:" alias, ShortcutSendReply.Bind(variant.mode, variant.body), "On")
     }
+}
+
+ShortcutSendLiteral(body, *) {
+    pos := 1
+    while found := RegExMatch(body, "\{[^{}]+\}", &key, pos) {
+        if (found > pos)
+            GreetingSendText(SubStr(body, pos, found - pos))
+        SendInput(key[0])
+        pos := found + StrLen(key[0])
+    }
+    GreetingSendText(SubStr(body, pos))
+    if (A_EndChar = "`n" && RegExMatch(body, "i)\{Enter\}"))
+        return
+    if (A_EndChar = "`n")
+        SendInput("{Enter}")
+    else if (A_EndChar != "")
+        GreetingSendText(A_EndChar)
 }
 
 ShortcutSendReply(mode, body, *) {
