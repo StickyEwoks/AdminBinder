@@ -2081,7 +2081,7 @@ ShortcutApplyRecord(record, state) {
             continue
         }
         if (variant.mode = "send")
-            Hotstring(":?:" alias, variant.body, "On")
+            Hotstring(":?C1:" alias, variant.body, "On")
         else if (variant.mode = "text")
             Hotstring(":?TC1:" alias, variant.body, "On")
         else
